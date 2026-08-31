@@ -292,6 +292,31 @@ func (s *RPCServer) CreateBreakpoint(arg CreateBreakpointIn, out *CreateBreakpoi
 	return nil
 }
 
+type SetExecutionPointIn struct {
+	// Addr is the address of the instruction to jump to.
+	Addr uint64
+}
+
+type SetExecutionPointOut struct {
+	State api.DebuggerState
+}
+
+// SetExecutionPoint sets the next instruction to be executed by the current
+// thread to the instruction at arg.Addr, without executing any of the
+// instructions in between (also known as "set next statement" or "jump"). The
+// target address must be inside the function the current thread is stopped in.
+func (s *RPCServer) SetExecutionPoint(arg SetExecutionPointIn, out *SetExecutionPointOut) error {
+	if err := s.debugger.SetExecutionPoint(arg.Addr); err != nil {
+		return err
+	}
+	state, err := s.debugger.State(false)
+	if err != nil {
+		return err
+	}
+	out.State = *state
+	return nil
+}
+
 type CreateEBPFTracepointIn struct {
 	FunctionName string
 }
