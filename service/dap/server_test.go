@@ -4653,6 +4653,25 @@ func TestEvaluateCommandRequest(t *testing.T) {
 						t.Errorf("\ngot: %#v, want sources=\"\"", got)
 					}
 
+					// Test types.
+					client.EvaluateRequest("dlv types", 1000, "repl")
+					got = client.ExpectEvaluateResponse(t)
+					if !strings.Contains(got.Body.Result, "main.FooBar") {
+						t.Errorf("\ngot: %#v, want types contains main.FooBar", got)
+					}
+
+					client.EvaluateRequest("dlv types ^main\\.FooBar2$", 1000, "repl")
+					got = client.ExpectEvaluateResponse(t)
+					if got.Body.Result != "main.FooBar2" {
+						t.Errorf("\ngot: %#v, want types=%q", got, "main.FooBar2")
+					}
+
+					client.EvaluateRequest("dlv types nonexistenttype", 1000, "repl")
+					got = client.ExpectEvaluateResponse(t)
+					if got.Body.Result != "" {
+						t.Errorf("\ngot: %#v, want types=\"\"", got)
+					}
+
 					// Test target.
 					client.EvaluateRequest("dlv target list", 1000, "repl")
 					got = client.ExpectEvaluateResponse(t)
