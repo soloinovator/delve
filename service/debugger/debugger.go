@@ -2664,10 +2664,32 @@ func (d *Debugger) CancelDownloads() bool {
 }
 
 // DownloadLibraryDebugInfo attempts to download the specified library's debug info.
-func (d *Debugger) DownloadLibraryDebugInfo(n int) error {
+func (d *Debugger) DownloadLibraryDebugInfo(n int, eventsFn func(*proc.Event)) error {
 	d.targetMutex.Lock()
 	defer d.targetMutex.Unlock()
-	return d.target.Selected.BinInfo().LoadImageBinaryInfoAgain(n)
+	if eventsFn != nil {
+		defer eventsFn(&proc.Event{Kind: proc.EventDownloadLibraryInfoDone})
+	}
+	d.target.SetEventsFn(eventsFn)
+	bi := d.target.Selected.BinInfo()
+	bi.ResetDownloadsContext()
+	if n > 0 {
+		return bi.LoadImageBinaryInfoAgain(n)
+	}
+	tried, succeeded := 0, 0
+	for i := range bi.Images {
+		if bi.Images[i].LoadError() != nil {
+			tried++
+			err := bi.LoadImageBinaryInfoAgain(i)
+			if err == nil {
+				succeeded++
+			}
+		}
+	}
+	if tried != succeeded {
+		return fmt.Errorf("downloaded %d/%d libraries", succeeded, tried)
+	}
+	return nil
 }
 
 func guessSubstitutePath(args *api.GuessSubstitutePathIn, bins [][]proc.Function, fileForFunc func(int, *proc.Function) string) map[string]string {
